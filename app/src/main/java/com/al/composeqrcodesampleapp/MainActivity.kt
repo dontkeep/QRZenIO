@@ -60,13 +60,16 @@ fun initUsbSerial(context: Context) {
         return
     }
     val deviceList = usbManager.deviceList
-    Log.d("USB", "Connected USB devices: ${deviceList.values.joinToString { "VendorID: ${it.vendorId}, ProductID: ${it.productId}" }}")
+    Log.d(
+        "USB",
+        "Connected USB devices: ${deviceList.values.joinToString { "VendorID: ${it.vendorId}, ProductID: ${it.productId}" }}"
+    )
 
     val availableDrivers = UsbSerialProber.getDefaultProber().findAllDrivers(usbManager)
-        if (availableDrivers.isEmpty()) {
-            Log.d("USB", "No USB drivers found")
-            return
-        }
+    if (availableDrivers.isEmpty()) {
+        Log.d("USB", "No USB drivers found")
+        return
+    }
 
     val driver = availableDrivers[0]
     val connection = usbManager.openDevice(driver.device)
@@ -98,7 +101,10 @@ fun initUsbSerial(context: Context) {
                                         UsbSerialPort.PARITY_NONE
                                     )
                                     usbSerialPort = port
-                                    Log.d("USB", "USB port opened successfully after permission granted")
+                                    Log.d(
+                                        "USB",
+                                        "USB port opened successfully after permission granted"
+                                    )
                                 } catch (e: IOException) {
                                     Log.e("USB", "Error opening USB port", e)
                                 }
@@ -147,6 +153,7 @@ fun sendDataToArduino(data: String, onResult: (Boolean, String) -> Unit) {
     }
     try {
         val dataBytes = data.toByteArray(Charsets.UTF_8)
+        Log.d("USB", "Sending data: $data")
         val byteWritten = dataBytes.size
         port.write(dataBytes, 1000)
         onResult(true, "Wrote $byteWritten bytes")
@@ -158,27 +165,29 @@ fun sendDataToArduino(data: String, onResult: (Boolean, String) -> Unit) {
 @Composable
 fun MainScreen() {
     var hasCameraPermission by remember { mutableStateOf<Boolean?>(null) }
-
     var scannedResult by remember { mutableStateOf<String?>(null) }
-
     var transferStatus by remember { mutableStateOf<String?>(null) }
-
     var isSendingData by remember { mutableStateOf(false) }
-
     var isScanningEnabled by remember { mutableStateOf(true) }
+    var isProcessing by remember { mutableStateOf(false) } // New flag to track processing state
 
     CameraPermissionHandler { granted ->
         hasCameraPermission = granted
     }
+
     when (hasCameraPermission) {
         true -> {
-            if(isScanningEnabled) {
+            if (isScanningEnabled) {
                 QRCodeScannerScreen(
                     modifier = Modifier.fillMaxSize(),
+                    isScanningEnabled = isScanningEnabled, // Pass the state to the scanner
                     onQrCodeScanned = { result ->
+                        if (isProcessing) return@QRCodeScannerScreen // Prevent multiple processing
+                        isProcessing = true
+                        Log.d("QR Code", "Scanned result: $result")
                         scannedResult = result
                         isSendingData = true
-                        isScanningEnabled = false
+                        isScanningEnabled = false // Disable scanner immediately
                         sendDataToArduino(result) { success, message ->
                             transferStatus = if (success) {
                                 "Data transferred successfully:\n$message"
@@ -186,32 +195,24 @@ fun MainScreen() {
                                 "Error transferring data:\n$message"
                             }
                             isSendingData = false
-                            scannedResult = null
+                            scannedResult = null // Dismiss scan result dialog
+                            isProcessing = false // Reset processing flag
                         }
                     }
                 )
             }
         }
-        false -> {
-            PermissionDeniedMessage()
-        } else -> {
-            null
-        }
+        false -> PermissionDeniedMessage()
+        else -> Unit
     }
 
     scannedResult?.let { result ->
         AlertDialog(
-            onDismissRequest = {
-                scannedResult = null
-                isScanningEnabled = true
-            },
-            title = { Text(text = "Scan Result") },
-            text = { Text(text = result) },
+            onDismissRequest = { scannedResult = null }, // Removed isScanningEnabled toggle
+            title = { Text("Scan Result") },
+            text = { Text(result) },
             confirmButton = {
-                Button(onClick = {
-                    scannedResult = null
-                    isScanningEnabled = true
-                }) {
+                Button(onClick = { scannedResult = null }) {
                     Text("OK")
                 }
             }
@@ -222,14 +223,14 @@ fun MainScreen() {
         AlertDialog(
             onDismissRequest = {
                 transferStatus = null
-                isScanningEnabled = true
+                isScanningEnabled = true // Re-enable scanner only here
             },
-            title = { Text(text = "Transfer Status") },
-            text = { Text(text = status) },
+            title = { Text("Transfer Status") },
+            text = { Text(status) },
             confirmButton = {
                 Button(onClick = {
                     transferStatus = null
-                    isScanningEnabled = true
+                    isScanningEnabled = true // Ensure enable on OK click
                 }) {
                     Text("OK")
                     Log.d("Error Status: ", status)
@@ -238,7 +239,6 @@ fun MainScreen() {
         )
     }
 }
-
 
 
 @Composable

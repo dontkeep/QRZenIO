@@ -13,11 +13,13 @@ import zxingcpp.BarcodeReader
 import android.util.Size
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageProxy
+import androidx.compose.runtime.LaunchedEffect
 import androidx.core.content.ContextCompat
 
 @Composable
 fun QRCodeScannerScreen(
     modifier: Modifier = Modifier,
+    isScanningEnabled: Boolean,
     onQrCodeScanned: (String) -> Unit
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -42,14 +44,17 @@ fun QRCodeScannerScreen(
                     .build()
 
                 imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(ctx)) { imageProxy ->
-                    val resultText = processImageProxy(imageProxy, barcodeReader)
-                    if (resultText.isNotEmpty()) {
-                        onQrCodeScanned(resultText)
+                    if (isScanningEnabled) {
+                        val resultText = processImageProxy(imageProxy, barcodeReader)
+                        if (resultText.isNotEmpty()) {
+                            onQrCodeScanned(resultText)
+                        }
                     }
+                    imageProxy.close()
                 }
 
                 try {
-                    cameraProvider.unbindAll()
+                    cameraProvider.unbindAll() // Unbind use cases to ensure they are bound again after changes
                     cameraProvider.bindToLifecycle(
                         lifecycleOwner,
                         CameraSelector.DEFAULT_BACK_CAMERA,
