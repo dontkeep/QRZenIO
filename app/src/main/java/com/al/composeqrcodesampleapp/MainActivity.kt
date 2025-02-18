@@ -153,12 +153,31 @@ fun sendDataToArduino(data: String, onResult: (Boolean, String) -> Unit) {
     }
     try {
         val dataBytes = data.toByteArray(Charsets.UTF_8)
-        Log.d("USB", "Sending data: $data")
-        val byteWritten = dataBytes.size
-        port.write(dataBytes, 1000)
-        onResult(true, "Wrote $byteWritten bytes")
+        val dataLength = dataBytes.size
+
+        // Use 4 bytes for the length (unsigned Int)
+        val outputBuffer = ByteArray(4 + dataLength)
+
+        // Write length as unsigned bytes
+        outputBuffer[0] = (dataLength ushr 24).toByte()
+        outputBuffer[1] = (dataLength ushr 16).toByte()
+        outputBuffer[2] = (dataLength ushr 8).toByte()
+        outputBuffer[3] = dataLength.toByte()
+
+        // Copy data into the buffer
+        System.arraycopy(dataBytes, 0, outputBuffer, 4, dataLength)
+
+        Log.d("USB", "Sending data: $data (Length: $dataLength)")
+        port.write(outputBuffer, 1000)
+
+        // Add a small delay to ensure data is sent completely
+        Thread.sleep(100)
+
+        onResult(true, "Wrote ${outputBuffer.size} bytes (Data: $data, Length: $dataLength)")
     } catch (e: IOException) {
         onResult(false, e.message ?: "IOException occurred")
+    } catch (e: InterruptedException) {
+        onResult(false, "Thread interrupted")
     }
 }
 
