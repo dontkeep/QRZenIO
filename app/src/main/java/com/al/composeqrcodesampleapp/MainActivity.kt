@@ -163,24 +163,34 @@ fun MainScreen() {
 
     var transferStatus by remember { mutableStateOf<String?>(null) }
 
+    var isSendingData by remember { mutableStateOf(false) }
+
+    var isScanningEnabled by remember { mutableStateOf(true) }
+
     CameraPermissionHandler { granted ->
         hasCameraPermission = granted
     }
     when (hasCameraPermission) {
         true -> {
-            QRCodeScannerScreen(
-                modifier = Modifier.fillMaxSize(),
-                onQrCodeScanned = { result ->
-                    scannedResult = result
-                    sendDataToArduino(result) { success, message ->
-                        transferStatus = if (success) {
-                            "Data transferred successfully:\n$message"
-                        } else {
-                            "Error transferring data:\n$message"
+            if(isScanningEnabled) {
+                QRCodeScannerScreen(
+                    modifier = Modifier.fillMaxSize(),
+                    onQrCodeScanned = { result ->
+                        scannedResult = result
+                        isSendingData = true
+                        isScanningEnabled = false
+                        sendDataToArduino(result) { success, message ->
+                            transferStatus = if (success) {
+                                "Data transferred successfully:\n$message"
+                            } else {
+                                "Error transferring data:\n$message"
+                            }
+                            isSendingData = false
+                            scannedResult = null
                         }
                     }
-                }
-            )
+                )
+            }
         }
         false -> {
             PermissionDeniedMessage()
@@ -191,11 +201,17 @@ fun MainScreen() {
 
     scannedResult?.let { result ->
         AlertDialog(
-            onDismissRequest = { scannedResult = null },
+            onDismissRequest = {
+                scannedResult = null
+                isScanningEnabled = true
+            },
             title = { Text(text = "Scan Result") },
             text = { Text(text = result) },
             confirmButton = {
-                Button(onClick = { scannedResult = null }) {
+                Button(onClick = {
+                    scannedResult = null
+                    isScanningEnabled = true
+                }) {
                     Text("OK")
                 }
             }
@@ -204,11 +220,17 @@ fun MainScreen() {
 
     transferStatus?.let { status ->
         AlertDialog(
-            onDismissRequest = { transferStatus = null },
+            onDismissRequest = {
+                transferStatus = null
+                isScanningEnabled = true
+            },
             title = { Text(text = "Transfer Status") },
             text = { Text(text = status) },
             confirmButton = {
-                Button(onClick = { transferStatus = null }) {
+                Button(onClick = {
+                    transferStatus = null
+                    isScanningEnabled = true
+                }) {
                     Text("OK")
                     Log.d("Error Status: ", status)
                 }

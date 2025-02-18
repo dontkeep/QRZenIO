@@ -71,6 +71,6 @@ fun processImageProxy(image: ImageProxy, barcodeReader: BarcodeReader): String {
     return image.use {
         barcodeReader.read(it)
     }.joinToString("\n") { result ->
-        "${result.format} (${result.contentType}): ${result.text}"
+        "${result.text}"
     }
 }
