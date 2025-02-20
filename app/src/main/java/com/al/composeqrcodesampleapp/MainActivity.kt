@@ -115,20 +115,17 @@ fun initUsbSerial(context: Context) {
                             Log.d("USB", "Permission denied for USB device")
                         }
                     }
-                    // Unregister the receiver once permission has been handled.
                     context?.unregisterReceiver(this)
                 }
             }
         }
 
-        // Register the receiver to listen for the permission response.
         ContextCompat.registerReceiver(
             context,
             usbPermissionReceiver,
             IntentFilter(ACTION_USB_PERMISSION),
             ContextCompat.RECEIVER_NOT_EXPORTED
         )
-        // Request permission for the device.
         usbManager.requestPermission(driver.device, permissionIntent)
 
         return

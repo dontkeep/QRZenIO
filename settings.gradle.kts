@@ -23,4 +23,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "ComposeQRCodeSampleApp"
 include(":app")
- 
+include(":QRZen")
