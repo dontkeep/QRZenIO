@@ -35,7 +35,7 @@ Next, add the dependency for the QR Scanner & USB Serial Library in your app's b
 
 ```groovy
 dependencies {
-    implementation 'com.github.dontkeep:qrscannerlibrary:<version>'
+    implementation 'com.github.dontkeep:QRZen:v1.0.1'
     // Other dependencies...
 }
 ```
