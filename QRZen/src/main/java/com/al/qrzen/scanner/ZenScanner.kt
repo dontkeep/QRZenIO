@@ -70,8 +70,9 @@ fun ZenScannerScreen(
 }
 
 fun processImageProxy(image: ImageProxy, scanner: BarcodeReader): String {
-    val result = image.use {
+    return image.use {
         scanner.read(it)
+    }.joinToString("\n") { result ->
+        "${result.text}"
     }
-    return result.joinToString("\n")
 }
