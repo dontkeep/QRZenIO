@@ -83,5 +83,4 @@ fun MainScreen() {
             isScanningEnabled = true
         }
     }
-
 }
