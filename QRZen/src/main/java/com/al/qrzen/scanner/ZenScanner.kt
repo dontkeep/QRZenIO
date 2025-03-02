@@ -1,9 +1,9 @@
 package com.al.qrzen.scanner
 
-import android.util.Size
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -15,6 +15,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -52,7 +56,7 @@ fun ZenScannerScreen(
                     }
 
                     val imageAnalysis = ImageAnalysis.Builder()
-                        .setTargetResolution(Size(1280, 720))
+                        .setTargetResolution(android.util.Size(1280, 720))
                         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                         .build()
 
@@ -85,21 +89,34 @@ fun ZenScannerScreen(
             modifier = Modifier.fillMaxSize()
         )
 
-        // Scanner overlay with transparent outside area
+        // Dark overlay with transparent scanning area
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.6f))
-        )
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val overlayColor = Color.Black.copy(alpha = 0.6f)
+                drawRect(overlayColor)
+                val scanSize = 200.dp.toPx()
+                val centerX = size.width / 2 - scanSize / 2
+                val centerY = size.height / 2 - scanSize / 2
+                drawRoundRect(
+                    color = Color.Transparent,
+                    topLeft = Offset(centerX, centerY),
+                    size = Size(scanSize, scanSize),
+                    cornerRadius = CornerRadius(16.dp.toPx()),
+                    blendMode = BlendMode.Clear
+                )
+            }
+        }
 
-        // Scanning area with rounded corners
+        // Scanning area border
         Box(
             modifier = Modifier
                 .size(200.dp)
                 .align(Alignment.Center)
                 .clip(RoundedCornerShape(16.dp))
                 .border(2.dp, Color.White, RoundedCornerShape(16.dp))
-                .background(Color.Transparent)
         )
 
         // Flash toggle button with an icon
