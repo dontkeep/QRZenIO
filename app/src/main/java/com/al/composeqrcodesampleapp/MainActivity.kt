@@ -59,6 +59,7 @@ fun MainScreen() {
                         Log.d("QR Code", "Scanned result: $result")
                         scannedResult = result
                         isProcessing = false
+                        isScanningEnabled = false
 
 //                        UsbSerialManager.sendDataToArduino(result) { success, message ->
 //                            transferStatus = if (success) {
