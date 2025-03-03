@@ -49,6 +49,7 @@ fun MainScreen() {
     when (hasCameraPermission) {
         true -> {
             if (isScanningEnabled) {
+                Log.d("QR Code", "${isScanningEnabled}")
                 ZenScannerScreen(
                     modifier = Modifier.fillMaxSize(),
                     isScanningEnabled = isScanningEnabled,
@@ -77,6 +78,7 @@ fun MainScreen() {
             Text("Requesting permission...")
         }
     }
+    Log.d("QR Code is not empty", "Scanned result: $scannedResult")
     scannedResult?.let {
         AlertShowResult(result = it) {
             scannedResult = null

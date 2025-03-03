@@ -1,5 +1,11 @@
 package com.al.qrzen.scanner
 
+import android.content.Context
+import android.content.res.Resources.NotFoundException
+import android.graphics.Matrix
+import android.graphics.Rect
+import android.graphics.RectF
+import android.util.Log
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -22,12 +28,18 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import zxingcpp.BarcodeReader
 import com.al.qrzen.R
+import com.google.zxing.BinaryBitmap
+import com.google.zxing.MultiFormatReader
+import com.google.zxing.PlanarYUVLuminanceSource
+import com.google.zxing.common.HybridBinarizer
+import java.nio.ByteBuffer
 
 @Composable
 fun ZenScannerScreen(
@@ -60,14 +72,14 @@ fun ZenScannerScreen(
                         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                         .build()
 
-                    imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(ctx)) {
+                    imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(ctx)) { imageProxy ->
                         if (isScanningEnabled) {
-                            val resultText = processImageProxy(it, scanner)
-                            if (resultText.isNotEmpty() && isWithinScanArea(resultText)) {
+                            val resultText = processImageProxy(imageProxy, scanner, scannerView)
+                            if (resultText.isNotEmpty()) {
                                 onQrCodeScanned(resultText)
                             }
                         }
-                        it.close()
+                        imageProxy.close()
                     }
 
                     try {
@@ -89,7 +101,6 @@ fun ZenScannerScreen(
             modifier = Modifier.fillMaxSize()
         )
 
-        // Dark overlay with transparent scanning area
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
@@ -141,17 +152,77 @@ fun ZenScannerScreen(
     }
 }
 
-// Function to check if the scanned QR code is inside the scan area
-private fun isWithinScanArea(resultText: String): Boolean {
-    // Implement logic to verify if the QR code is within the overlay region
-    return true // Placeholder
-}
+private fun processImageProxy(
+    image: ImageProxy,
+    scanner: BarcodeReader,
+    previewView: PreviewView
+): String {
+    return image.use { proxy ->
+        try {
+            // Get the transformation matrix
+//            val matrix = getCorrectionMatrix(image, previewView)
 
+            // Calculate scan area in preview coordinates (center 200dp)
+            val scanAreaSize = 200.dp.toPx(previewView.context).toInt()
+            // Calculate the center crop region
+            val centerX = proxy.width / 2
+            val centerY = proxy.height / 2
+            val left = (centerX - scanAreaSize / 2).coerceAtLeast(0)
+            val top = (centerY - scanAreaSize / 2).coerceAtLeast(0)
+            val right = (left + scanAreaSize).coerceAtMost(proxy.width)
+            val bottom = (top + scanAreaSize).coerceAtMost(proxy.height)
 
-fun processImageProxy(image: ImageProxy, scanner: BarcodeReader): String {
-    return image.use {
-        scanner.read(it)
-    }.joinToString("\n") { result ->
-        "${result.text}"
+            val scanArea = Rect(left, top, right, bottom)
+
+            // Get YUV plane data
+            val yuvData = image.planes[0].buffer.toByteArray()
+
+            // Create luminance source
+            val source = PlanarYUVLuminanceSource(
+                yuvData,
+                proxy.width,
+                proxy.height,
+                scanArea.left,
+                scanArea.top,
+                scanArea.width(),
+                scanArea.height(),
+                false
+            )
+
+            // Configure reader
+            val reader = MultiFormatReader().apply {
+                setHints(mapOf(
+                    com.google.zxing.DecodeHintType.POSSIBLE_FORMATS to listOf(com.google.zxing.BarcodeFormat.QR_CODE)
+                ))
+            }
+
+            val result = reader.decode(BinaryBitmap(HybridBinarizer(source)))
+            result.text
+        } catch (e: Exception) {
+            Log.e("QRScanner", "Decoding error: ${e.message}")
+            ""
+        }
     }
 }
+
+// Updated ByteBuffer extension with proper handling
+private fun ByteBuffer.toByteArray(): ByteArray {
+    rewind()
+    val data = ByteArray(remaining())
+    get(data)
+    rewind()
+    return data
+}
+
+// Fixed Dp to pixel conversion
+private fun Dp.toPx(context: Context): Float {
+    return this.value * context.resources.displayMetrics.density
+}
+
+//fun processImageProxy(image: ImageProxy, scanner: BarcodeReader): String {
+//    return image.use {
+//        scanner.read(it)
+//    }.joinToString("\n") { result ->
+//        "${result.text}"
+//    }
+//}

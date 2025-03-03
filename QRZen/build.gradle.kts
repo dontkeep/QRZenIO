@@ -48,6 +48,8 @@ dependencies {
     //usb serial for android to communicate with arduino
     implementation("com.github.mik3y:usb-serial-for-android:3.8.1")
 
+    implementation("com.google.zxing:core:3.3.0")
+
     implementation(libs.androidx.material3)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
