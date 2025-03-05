@@ -49,7 +49,6 @@ fun ZenScannerScreen(
     isFlashEnabled: Boolean = false
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
-    val context = LocalContext.current
     val scanner = BarcodeReader()
     var flashEnabled by remember { mutableStateOf(isFlashEnabled) }
     var camera: Camera? by remember { mutableStateOf(null) }
@@ -159,9 +158,6 @@ private fun processImageProxy(
 ): String {
     return image.use { proxy ->
         try {
-            // Get the transformation matrix
-//            val matrix = getCorrectionMatrix(image, previewView)
-
             // Calculate scan area in preview coordinates (center 200dp)
             val scanAreaSize = 200.dp.toPx(previewView.context).toInt()
             // Calculate the center crop region
@@ -205,7 +201,7 @@ private fun processImageProxy(
     }
 }
 
-// Updated ByteBuffer extension with proper handling
+// to convert image coordinates to view coordinates
 private fun ByteBuffer.toByteArray(): ByteArray {
     rewind()
     val data = ByteArray(remaining())
@@ -214,15 +210,7 @@ private fun ByteBuffer.toByteArray(): ByteArray {
     return data
 }
 
-// Fixed Dp to pixel conversion
+// Dp to pixel conversion
 private fun Dp.toPx(context: Context): Float {
     return this.value * context.resources.displayMetrics.density
 }
-
-//fun processImageProxy(image: ImageProxy, scanner: BarcodeReader): String {
-//    return image.use {
-//        scanner.read(it)
-//    }.joinToString("\n") { result ->
-//        "${result.text}"
-//    }
-//}
