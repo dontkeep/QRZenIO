@@ -14,12 +14,10 @@ import androidx.compose.ui.Modifier
 import com.al.composeqrcodesampleapp.ui.theme.ComposeQRCodeSampleAppTheme
 import android.util.Log
 import androidx.compose.material3.Text
+import com.al.qrzen.scanner.BorderScanner
 import com.al.qrzen.scanner.CameraPermissionHandler
 import com.al.qrzen.scanner.PermissionDeniedMessage
-import com.al.qrzen.scanner.ZenScannerScreen
 import com.al.qrzen.ui.AlertShowResult
-import com.al.qrzen.usb.UsbSerialManager
-import com.al.qrzen.usb.UsbSerialManager.initUsbSerial
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,11 +48,12 @@ fun MainScreen() {
         true -> {
             if (isScanningEnabled) {
                 Log.d("QR Code", "${isScanningEnabled}")
-                ZenScannerScreen(
+                BorderScanner(
                     modifier = Modifier.fillMaxSize(),
                     isScanningEnabled = isScanningEnabled,
+                    isFlashEnabled = true,
                     onQrCodeScanned = { result ->
-                        if (isProcessing) return@ZenScannerScreen
+                        if (isProcessing) return@BorderScanner
                         isProcessing = true
                         Log.d("QR Code", "Scanned result: $result")
                         scannedResult = result

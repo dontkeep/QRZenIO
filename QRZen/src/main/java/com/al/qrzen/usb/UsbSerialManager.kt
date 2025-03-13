@@ -23,7 +23,7 @@ object UsbSerialManager {
             return
         }
 
-        val deviceList = usbManager.deviceList
+        usbManager.deviceList
         val availableDrivers = UsbSerialProber.getDefaultProber().findAllDrivers(usbManager)
         if (availableDrivers.isEmpty()) {
             Log.d("USB", "No USB drivers found")
