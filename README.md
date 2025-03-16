@@ -1,86 +1,106 @@
 # (QRZen) QR Scanner & USB Serial Library
 
-This library provides a modular solution that seamlessly integrates QR code scanning with USB serial communication for Android applications. It offers composable components for camera setup, permission handling, and real-time QR code detection, while maintaining USB data serialization and transfer in a separate module. This design allows you to easily integrate QR scanning capabilities and communicate with USB-connected devices (e.g., Arduino) within your app.
+This library provides a modular solution that seamlessly integrates QR code scanning with USB serial communication for Android applications. It offers composable components for camera setup, permission handling, and real-time QR code detection, while maintaining USB data serialization and transfer in a separate module. This design lets you easily integrate QR scanning capabilities and communicate with USB-connected devices (e.g., Arduino) within your app.
 
 ## Features
 
-- **QR Code Scanning:**  
-  Quickly integrate camera preview and QR code detection using Jetpack Compose.
+- **Normal QR Scanner (`ZenScannerScreen`)**  
+  A simple QR scanner that integrates seamlessly into your app.
 
-- **Camera Permission Handling:**  
-  Built-in composables to request and handle camera permissions.
+- **Bordered QR Scanner (`BorderScanner`)**  
+  A QR scanner with a highlighted scanning area to focus user attention.
 
-- **USB Serial Communication:**  
-  Separate module to manage USB device initialization and data transfer.
-
-- **Modular Design:**  
-  Separate packages for scanner and USB functionalities for ease of maintenance and reuse.
+- **USB Serial Communication (`UsbSerialManager`)**  
+  Enables communication with microcontroller devices via USB.
 
 ## Installation
 
 ### 1. Add the JitPack Repository
 
-First, add JitPack to your project's repositories. In your root `build.gradle` (or `settings.gradle` for newer Gradle versions), include:
+First, add JitPack to your project's repositories. In your root `settings.gradle` file, include:
 
-```groovy
-allprojects {
+```kotlin
+pluginManagement {
     repositories {
-        // ... other repositories
-        maven { url 'https://jitpack.io' }
+        google {
+            content {
+                includeGroupByRegex("com\\.android.*")
+                includeGroupByRegex("com\\.google.*")
+                includeGroupByRegex("androidx.*")
+            }
+        }
+        mavenCentral()
+        gradlePluginPortal()
+        maven { url = uri("https://jitpack.io") }
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        maven { url = uri("https://jitpack.io") }
     }
 }
 ```
-2. Add the Library Dependency
-Next, add the dependency for the QR Scanner & USB Serial Library in your app's build.gradle file:
 
-```groovy
+### 2. Add the Library Dependency
+Next, add the dependency for the QRZen library in your app's `build.gradle.kts` file:
+
+```kotlin
 dependencies {
-    implementation 'com.github.dontkeep:QRZen:v1.0.1'
-    // Other dependencies...
+    implementation("com.github.dontkeep:QRZen:v1.1.0")
 }
 ```
 
 ## Usage
 
-### QR Code Scanning
-
-Use the `QRCodeScannerScreen` composable along with the `CameraPermissionHandler` to scan QR codes:
+### Normal QR Scanner
+Use the `ZenScannerScreen` composable to scan QR codes:
 
 ```kotlin
 @Composable
 fun MainScreen() {
     var hasCameraPermission by remember { mutableStateOf<Boolean?>(null) }
 
-    // Request camera permission
     CameraPermissionHandler { granted ->
         hasCameraPermission = granted
     }
 
     when (hasCameraPermission) {
         true -> {
-            QRCodeScannerScreen(
+            ZenScannerScreen(
                 modifier = Modifier.fillMaxSize(),
                 isScanningEnabled = true,
+                isFlashEnabled = true,
                 onQrCodeScanned = { result ->
-                    // Handle scanned QR code result
                     Log.d("QR Code", "Scanned result: $result")
                 }
             )
         }
-        false -> {
-            PermissionDeniedMessage()
-        }
-        else -> {
-            // Optionally show a loading indicator or placeholder
-        }
+        false -> PermissionDeniedMessage()
+        null -> Text("Requesting permission...")
     }
 }
+```
+
+### Bordered QR Scanner
+Use the `BorderScanner` composable to provide a focused scanning area:
+
+```kotlin
+BorderScanner(
+    modifier = Modifier.fillMaxSize(),
+    isScanningEnabled = true,
+    isFlashEnabled = true,
+    onQrCodeScanned = { result ->
+        Log.d("QR Code", "Scanned result: $result")
+    }
+)
 ```
 
 ### USB Serial Communication
 
 #### 1. Initialize USB Connection
-
 Call `UsbSerialManager.initUsbSerial(context)` in your `MainActivity`:
 
 ```kotlin
@@ -98,7 +118,6 @@ class MainActivity : ComponentActivity() {
 ```
 
 #### 2. Send Data
-
 Use `UsbSerialManager.sendDataToArduino(...)` to send data to the connected USB device:
 
 ```kotlin
@@ -117,7 +136,10 @@ UsbSerialManager.sendDataToArduino("Your QR data or any string") { success, mess
   Manages USB serial communication including initialization and data transfer.
 
 - **scanner/ZenScanner.kt:**  
-  Composable for camera preview and QR code scanning.
+  Composable for a standard QR scanner.
+
+- **scanner/BorderScanner.kt:**  
+  Composable for a bordered QR scanner with a focused scanning area.
 
 - **scanner/CameraPermissionHandler.kt:**  
   Handles camera permission requests using Jetpack Compose.
@@ -133,3 +155,4 @@ Feel free to adjust the camera setup, QR code processing, or USB communication l
 
 This project is licensed under the Apache License, Version 2.0.  
 For details, see [http://www.apache.org/licenses/LICENSE-2.0.txt](http://www.apache.org/licenses/LICENSE-2.0.txt).
+
