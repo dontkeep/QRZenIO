@@ -47,7 +47,7 @@ class CoreScanner(
     private fun processImageProxy(image: ImageProxy): String {
         return image.use {
             scanner.read(it)
-        }.joinToString("\n") { it.text.toString() }
+        }.joinToString("\n") { it.text ?: ""}
     }
 
 
