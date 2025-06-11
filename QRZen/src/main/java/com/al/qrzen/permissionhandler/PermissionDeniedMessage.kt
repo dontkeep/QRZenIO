@@ -1,4 +1,4 @@
-package com.al.qrzen.scanner
+package com.al.qrzen.permissionhandler
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize

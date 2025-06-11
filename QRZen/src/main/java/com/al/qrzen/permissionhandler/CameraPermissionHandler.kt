@@ -1,5 +1,6 @@
-package com.al.qrzen.scanner
+package com.al.qrzen.permissionhandler
 
+import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -26,7 +27,7 @@ fun CameraPermissionHandler(
         if (!permissionResult) {
             permissionResult = true
             delay(100)
-            permissionLauncher.launch(android.Manifest.permission.CAMERA)
+            permissionLauncher.launch(Manifest.permission.CAMERA)
         }
     }
 }
