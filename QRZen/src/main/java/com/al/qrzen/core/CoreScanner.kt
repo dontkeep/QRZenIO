@@ -83,7 +83,7 @@ class CoreScanner(
                 val reader = MultiFormatReader().apply {
                     setHints(
                         mapOf(
-                            DecodeHintType.POSSIBLE_FORMATS to listOf(BarcodeFormat.QR_CODE)
+                            DecodeHintType.POSSIBLE_FORMATS to BarcodeFormat.entries
                         )
                     )
                 }

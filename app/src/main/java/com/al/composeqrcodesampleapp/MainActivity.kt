@@ -15,8 +15,9 @@ import com.al.composeqrcodesampleapp.ui.theme.ComposeQRCodeSampleAppTheme
 import android.util.Log
 import androidx.compose.material3.Text
 import com.al.qrzen.scanner.BorderScanner
-import com.al.qrzen.scanner.CameraPermissionHandler
-import com.al.qrzen.scanner.PermissionDeniedMessage
+import com.al.qrzen.permissionhandler.CameraPermissionHandler
+import com.al.qrzen.permissionhandler.PermissionDeniedMessage
+import com.al.qrzen.scanner.ZenScannerScreen
 import com.al.qrzen.ui.AlertShowResult
 
 class MainActivity : ComponentActivity() {
@@ -36,7 +37,6 @@ class MainActivity : ComponentActivity() {
 fun MainScreen() {
     var hasCameraPermission by remember { mutableStateOf<Boolean?>(null) }
     var scannedResult by remember { mutableStateOf<String?>(null) }
-//    var transferStatus by remember { mutableStateOf<String?>(null) }
     var isScanningEnabled by remember { mutableStateOf(true) }
     var isProcessing by remember { mutableStateOf(false) }
 
@@ -47,18 +47,19 @@ fun MainScreen() {
     when (hasCameraPermission) {
         true -> {
             if (isScanningEnabled) {
-                Log.d("QR Code", "${isScanningEnabled}")
                 BorderScanner(
                     modifier = Modifier.fillMaxSize(),
                     isScanningEnabled = isScanningEnabled,
                     isFlashEnabled = true,
+                    isZoomEnabled = true,
+                    isAutoFocusEnabled = true,
                     onQrCodeScanned = { result ->
                         if (isProcessing) return@BorderScanner
                         isProcessing = true
                         Log.d("QR Code", "Scanned result: $result")
                         scannedResult = result
-                        isProcessing = false
                         isScanningEnabled = false
+                        isProcessing = false
 
 //                        UsbSerialManager.sendDataToArduino(result) { success, message ->
 //                            transferStatus = if (success) {
@@ -73,12 +74,13 @@ fun MainScreen() {
                 )
             }
         }
+
         false -> PermissionDeniedMessage()
         null -> {
             Text("Requesting permission...")
         }
     }
-    Log.d("QR Code is not empty", "Scanned result: $scannedResult")
+
     scannedResult?.let {
         AlertShowResult(result = it) {
             scannedResult = null

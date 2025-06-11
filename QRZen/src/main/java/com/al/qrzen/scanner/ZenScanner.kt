@@ -26,7 +26,10 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import zxingcpp.BarcodeReader
 import com.al.qrzen.R
 import com.al.qrzen.core.CoreScanner
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.debounce
 
+@OptIn(FlowPreview::class)
 @Composable
 fun ZenScannerScreen(
     modifier: Modifier = Modifier,
@@ -57,6 +60,9 @@ fun ZenScannerScreen(
                 this.getPreviewView = { previewView }
             }
         }
+
+        var zoomRatioState by remember { mutableFloatStateOf(1f) }
+        var maxZoomRatio by remember { mutableFloatStateOf(4f) }
 
         AndroidView(
             factory = { ctx ->
@@ -113,47 +119,56 @@ fun ZenScannerScreen(
             modifier = Modifier.fillMaxSize()
         )
 
-        if (isFlashEnabled) {
-            IconButton(
-                onClick = {
-                    flashEnabled = !flashEnabled
-                    camera?.cameraControl?.enableTorch(flashEnabled)
-                },
+        if (isFlashEnabled || isZoomEnabled) {
+            Column(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 48.dp)
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary)
+                    .padding(bottom = 52.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Icon(
-                    painter = painterResource(
-                        id = if (flashEnabled) R.drawable.ic_flash_filled else R.drawable.ic_flash_outline
-                    ),
-                    contentDescription = "Flash Toggle",
-                    tint = Color.White
-                )
+                if (isZoomEnabled) {
+                    var sliderValue by remember { mutableFloatStateOf(zoomRatioState) }
+
+                    LaunchedEffect(sliderValue) {
+                        snapshotFlow { sliderValue }
+                            .debounce(25)
+                            .collect { zoom ->
+                                camera?.cameraControl?.setZoomRatio(zoom)
+                            }
+                    }
+
+                    Slider(
+                        value = sliderValue,
+                        onValueChange = { sliderValue = it },
+                        valueRange = 1f..maxZoomRatio,
+                        modifier = Modifier
+                            .padding(horizontal = 32.dp)
+                    )
+                }
+
+                if (isFlashEnabled) {
+                    IconButton(
+                        onClick = {
+                            flashEnabled = !flashEnabled
+                            camera?.cameraControl?.enableTorch(flashEnabled)
+                        },
+                        modifier = Modifier
+                            .padding(top = 8.dp)
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary)
+                    ) {
+                        Icon(
+                            painter = painterResource(
+                                id = if (flashEnabled) R.drawable.ic_flash_filled else R.drawable.ic_flash_outline
+                            ),
+                            contentDescription = "Flash Toggle",
+                            tint = Color.White
+                        )
+                    }
+                }
             }
         }
 
-        if (isZoomEnabled) {
-            Slider(
-                value = zoomRatio,
-                onValueChange = {
-                    zoomRatio = it
-                    camera?.cameraInfo?.zoomState?.value?.let { zoomState ->
-                        val minZoom = zoomState.minZoomRatio
-                        val maxZoom = zoomState.maxZoomRatio
-                        val newZoom = minZoom + (maxZoom - minZoom) * zoomRatio
-                        camera?.cameraControl?.setZoomRatio(newZoom)
-                    }
-                },
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 120.dp)
-                    .width(200.dp),
-                valueRange = 0f..1f
-            )
-        }
     }
 }

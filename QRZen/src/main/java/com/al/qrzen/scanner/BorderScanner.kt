@@ -25,7 +25,6 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
@@ -33,12 +32,10 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import zxingcpp.BarcodeReader
 import com.al.qrzen.R
 import com.al.qrzen.core.CoreScanner
-import com.google.zxing.BinaryBitmap
-import com.google.zxing.MultiFormatReader
-import com.google.zxing.PlanarYUVLuminanceSource
-import com.google.zxing.common.HybridBinarizer
-import java.nio.ByteBuffer
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.debounce
 
+@OptIn(FlowPreview::class)
 @Composable
 fun BorderScanner(
     modifier: Modifier = Modifier,
@@ -54,20 +51,23 @@ fun BorderScanner(
 
     var flashEnabled by remember { mutableStateOf(false) }
     var camera: Camera? by remember { mutableStateOf(null) }
-    var zoomRatio by remember { mutableFloatStateOf(1f) }
+
+    var previewView: PreviewView? = null
+    val scanningState by rememberUpdatedState(newValue = isScanningEnabled)
+
+    val processor = remember {
+        CoreScanner(scanner) { result ->
+            onQrCodeScanned(result)
+        }.apply {
+            this.isScanningEnabled = { scanningState }
+            this.getPreviewView = { previewView }
+        }
+    }
+
+    var zoomRatioState by remember { mutableFloatStateOf(1f) }
+    var maxZoomRatio by remember { mutableFloatStateOf(4f) }
 
     Box(modifier = modifier.fillMaxSize()) {
-        var previewView: PreviewView? = null
-        val scanningState by rememberUpdatedState(newValue = isScanningEnabled)
-
-        val processor = remember {
-            CoreScanner(scanner) { result ->
-                onQrCodeScanned(result)
-            }.apply {
-                this.isScanningEnabled = { scanningState }
-                this.getPreviewView = { previewView }
-            }
-        }
 
         AndroidView(
             factory = { ctx ->
@@ -75,14 +75,11 @@ fun BorderScanner(
                     if (isAutoFocusEnabled) {
                         setOnTouchListener { view, event ->
                             if (event.action == MotionEvent.ACTION_DOWN) {
-                                val factory = this.meteringPointFactory
-                                val point = factory.createPoint(event.x, event.y)
+                                val point = meteringPointFactory.createPoint(event.x, event.y)
                                 val action = FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AF)
                                     .disableAutoCancel()
                                     .build()
                                 camera?.cameraControl?.startFocusAndMetering(action)
-
-                                // Inform accessibility services and standard tap handling
                                 view.performClick()
                             }
                             true
@@ -115,18 +112,15 @@ fun BorderScanner(
                             preview,
                             imageAnalysis
                         )
-
                         camera?.cameraControl?.enableTorch(flashEnabled)
 
-                        // Listen for max zoom ratio
+                        // Observe max zoom ratio
                         camera?.cameraInfo?.zoomState?.observe(lifecycleOwner) { zoomState ->
-                            if (zoomRatio > zoomState.maxZoomRatio) {
-                                zoomRatio = zoomState.maxZoomRatio
-                            }
+                            maxZoomRatio = zoomState.maxZoomRatio
+                            zoomRatioState = zoomState.zoomRatio
                         }
-
-                    } catch (exc: Exception) {
-                        exc.printStackTrace()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
                     }
                 }, ContextCompat.getMainExecutor(ctx))
 
@@ -135,14 +129,10 @@ fun BorderScanner(
             modifier = Modifier.fillMaxSize()
         )
 
-        // Overlay with transparent scanning area
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
+        // Transparent scan box
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Canvas(modifier = Modifier.fillMaxSize()) {
-                val overlayColor = Color.Black.copy(alpha = 0.6f)
-                drawRect(overlayColor)
+                drawRect(Color.Black.copy(alpha = 0.6f))
                 val scanSize = 200.dp.toPx()
                 val centerX = size.width / 2 - scanSize / 2
                 val centerY = size.height / 2 - scanSize / 2
@@ -154,53 +144,66 @@ fun BorderScanner(
                     blendMode = BlendMode.Clear
                 )
             }
-        }
 
-        // White border
-        Box(
-            modifier = Modifier
-                .size(200.dp)
-                .align(Alignment.Center)
-                .clip(RoundedCornerShape(16.dp))
-                .border(2.dp, Color.White, RoundedCornerShape(16.dp))
-        )
-
-        // Flash toggle
-        if (isFlashEnabled) {
-            IconButton(
-                onClick = {
-                    flashEnabled = !flashEnabled
-                    camera?.cameraControl?.enableTorch(flashEnabled)
-                },
+            Box(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = if (isZoomEnabled) 96.dp else 48.dp)
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary)
-            ) {
-                Icon(
-                    painter = painterResource(id = if (flashEnabled) R.drawable.ic_flash_filled else R.drawable.ic_flash_outline),
-                    contentDescription = "Flash Toggle",
-                    tint = Color.White
-                )
-            }
-        }
-
-        // Zoom slider
-        if (isZoomEnabled) {
-            Slider(
-                value = zoomRatio,
-                onValueChange = {
-                    zoomRatio = it
-                    camera?.cameraControl?.setZoomRatio(it)
-                },
-                valueRange = 1f..(camera?.cameraInfo?.zoomState?.value?.maxZoomRatio ?: 4f),
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(horizontal = 32.dp, vertical = 24.dp)
+                    .size(200.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .border(2.dp, Color.White, RoundedCornerShape(16.dp))
             )
+        }
+
+        if (isFlashEnabled || isZoomEnabled) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 52.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (isZoomEnabled) {
+                    var sliderValue by remember { mutableFloatStateOf(zoomRatioState) }
+
+                    LaunchedEffect(sliderValue) {
+                        snapshotFlow { sliderValue }
+                            .debounce(25)
+                            .collect { zoom ->
+                                camera?.cameraControl?.setZoomRatio(zoom)
+                            }
+                    }
+
+                    Slider(
+                        value = sliderValue,
+                        onValueChange = { sliderValue = it },
+                        valueRange = 1f..maxZoomRatio,
+                        modifier = Modifier
+                            .padding(horizontal = 32.dp)
+                    )
+                }
+
+                if (isFlashEnabled) {
+                    IconButton(
+                        onClick = {
+                            flashEnabled = !flashEnabled
+                            camera?.cameraControl?.enableTorch(flashEnabled)
+                        },
+                        modifier = Modifier
+                            .padding(top = 8.dp)
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary)
+                    ) {
+                        Icon(
+                            painter = painterResource(
+                                id = if (flashEnabled) R.drawable.ic_flash_filled else R.drawable.ic_flash_outline
+                            ),
+                            contentDescription = "Flash Toggle",
+                            tint = Color.White
+                        )
+                    }
+                }
+            }
         }
     }
 }
+
 
