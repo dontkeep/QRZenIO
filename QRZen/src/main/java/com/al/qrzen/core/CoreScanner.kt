@@ -57,7 +57,7 @@ class CoreScanner(
     ): String {
         return image.use { proxy ->
             try {
-                val scanAreaSize = 200.dp.toPx(previewView.context).toInt()
+                val scanAreaSize = 350.dp.toPx(previewView.context).toInt()
                 val centerX = proxy.width / 2
                 val centerY = proxy.height / 2
                 val left = (centerX - scanAreaSize / 2).coerceAtLeast(0)

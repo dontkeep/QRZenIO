@@ -37,13 +37,13 @@ import kotlinx.coroutines.flow.debounce
 
 @OptIn(FlowPreview::class)
 @Composable
-fun BorderScanner(
+fun BorderQRScanner(
     modifier: Modifier = Modifier,
     isScanningEnabled: Boolean,
     onQrCodeScanned: (String) -> Unit,
     isFlashEnabled: Boolean,
     isZoomEnabled: Boolean,
-    isAutoFocusEnabled: Boolean
+    isTapToFocusEnabled: Boolean
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
@@ -72,7 +72,7 @@ fun BorderScanner(
         AndroidView(
             factory = { ctx ->
                 previewView = PreviewView(ctx).apply {
-                    if (isAutoFocusEnabled) {
+                    if (isTapToFocusEnabled) {
                         setOnTouchListener { view, event ->
                             if (event.action == MotionEvent.ACTION_DOWN) {
                                 val point = meteringPointFactory.createPoint(event.x, event.y)
@@ -133,7 +133,7 @@ fun BorderScanner(
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 drawRect(Color.Black.copy(alpha = 0.6f))
-                val scanSize = 200.dp.toPx()
+                val scanSize = 350.dp.toPx()
                 val centerX = size.width / 2 - scanSize / 2
                 val centerY = size.height / 2 - scanSize / 2
                 drawRoundRect(
@@ -147,7 +147,7 @@ fun BorderScanner(
 
             Box(
                 modifier = Modifier
-                    .size(200.dp)
+                    .size(350.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .border(2.dp, Color.White, RoundedCornerShape(16.dp))
             )
@@ -176,7 +176,7 @@ fun BorderScanner(
                         onValueChange = { sliderValue = it },
                         valueRange = 1f..maxZoomRatio,
                         modifier = Modifier
-                            .padding(horizontal = 32.dp)
+                            .padding(horizontal = 64.dp)
                     )
                 }
 
@@ -194,7 +194,7 @@ fun BorderScanner(
                     ) {
                         Icon(
                             painter = painterResource(
-                                id = if (flashEnabled) R.drawable.ic_flash_filled else R.drawable.ic_flash_outline
+                                id = if (flashEnabled) R.drawable.torchiconon else R.drawable.torchicon
                             ),
                             contentDescription = "Flash Toggle",
                             tint = Color.White

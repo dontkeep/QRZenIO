@@ -14,7 +14,7 @@ import androidx.compose.ui.Modifier
 import com.al.composeqrcodesampleapp.ui.theme.ComposeQRCodeSampleAppTheme
 import android.util.Log
 import androidx.compose.material3.Text
-import com.al.qrzen.scanner.BorderScanner
+import com.al.qrzen.scanner.BorderQRScanner
 import com.al.qrzen.permissionhandler.CameraPermissionHandler
 import com.al.qrzen.permissionhandler.PermissionDeniedMessage
 import com.al.qrzen.scanner.ZenScannerScreen
@@ -47,14 +47,14 @@ fun MainScreen() {
     when (hasCameraPermission) {
         true -> {
             if (isScanningEnabled) {
-                BorderScanner(
+                BorderQRScanner(
                     modifier = Modifier.fillMaxSize(),
                     isScanningEnabled = isScanningEnabled,
                     isFlashEnabled = true,
                     isZoomEnabled = true,
-                    isAutoFocusEnabled = true,
+                    isTapToFocusEnabled = true,
                     onQrCodeScanned = { result ->
-                        if (isProcessing) return@BorderScanner
+                        if (isProcessing) return@BorderQRScanner
                         isProcessing = true
                         Log.d("QR Code", "Scanned result: $result")
                         scannedResult = result

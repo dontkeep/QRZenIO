@@ -2,6 +2,7 @@ package com.al.qrzen.scanner
 
 import android.util.Size
 import android.view.MotionEvent
+import android.view.ViewTreeObserver
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -36,69 +37,51 @@ fun ZenScannerScreen(
     isScanningEnabled: Boolean,
     onQrCodeScanned: (String) -> Unit,
     isFlashEnabled: Boolean,
-    isZoomEnabled: Boolean,
-    isAutoFocusEnabled: Boolean
+    isZoomEnabled: Boolean = false,
+    isTapToFocusEnabled: Boolean = false
 ) {
-    val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val scanner = remember { BarcodeReader() }
-
+    val context = LocalContext.current
+    val scanner = BarcodeReader()
     var flashEnabled by remember { mutableStateOf(false) }
     var camera: Camera? by remember { mutableStateOf(null) }
     var zoomRatio by remember { mutableFloatStateOf(1f) }
 
+    // Delay logic: store last scan time
+    var lastScanTimeMillis by remember { mutableLongStateOf(0L) }
+
+    val previewView = remember { PreviewView(context) }
+
     Box(modifier = modifier.fillMaxSize()) {
-        var previewView: PreviewView? = null
-
-        val scanningState by rememberUpdatedState(newValue = isScanningEnabled)
-
-        val processor = remember {
-            CoreScanner(scanner) { qrText ->
-                onQrCodeScanned(qrText)
-            }.apply {
-                this.isScanningEnabled = { scanningState }
-                this.getPreviewView = { previewView }
-            }
-        }
-
-        var zoomRatioState by remember { mutableFloatStateOf(1f) }
-        var maxZoomRatio by remember { mutableFloatStateOf(4f) }
-
         AndroidView(
             factory = { ctx ->
-                previewView = PreviewView(ctx).apply {
-                    if (isAutoFocusEnabled) {
-                        setOnTouchListener { view, event ->
-                            if (event.action == MotionEvent.ACTION_DOWN) {
-                                val factory = this.meteringPointFactory
-                                val point = factory.createPoint(event.x, event.y)
-                                val action = FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AF)
-                                    .disableAutoCancel()
-                                    .build()
-                                camera?.cameraControl?.startFocusAndMetering(action)
-                                view.performClick()
-                            }
-                            true
-                        }
-                    }
-                }
-
                 val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
+
+                previewView.scaleType = PreviewView.ScaleType.FILL_CENTER
 
                 cameraProviderFuture.addListener({
                     val cameraProvider = cameraProviderFuture.get()
 
                     val preview = Preview.Builder().build().also {
-                        it.setSurfaceProvider(previewView!!.surfaceProvider)
+                        it.surfaceProvider = previewView.surfaceProvider
                     }
 
                     val imageAnalysis = ImageAnalysis.Builder()
                         .setTargetResolution(Size(1280, 720))
                         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                         .build()
-                        .also {
-                            it.setAnalyzer(ContextCompat.getMainExecutor(ctx), processor)
+
+                    imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(ctx)) {
+                        val now = System.currentTimeMillis()
+                        if (isScanningEnabled && now - lastScanTimeMillis > 300) {
+                            val resultText = processImageProxy(it, scanner)
+                            if (resultText.isNotEmpty()) {
+                                lastScanTimeMillis = now
+                                onQrCodeScanned(resultText)
+                            }
                         }
+                        it.close()
+                    }
 
                     try {
                         cameraProvider.unbindAll()
@@ -113,62 +96,72 @@ fun ZenScannerScreen(
                         exc.printStackTrace()
                     }
                 }, ContextCompat.getMainExecutor(ctx))
-
-                previewView!!
+                if (isTapToFocusEnabled) {
+                    previewView.viewTreeObserver.addOnGlobalLayoutListener(
+                        object : ViewTreeObserver.OnGlobalLayoutListener {
+                            override fun onGlobalLayout() {
+                                previewView.viewTreeObserver.removeOnGlobalLayoutListener(this)
+                                previewView.setOnTouchListener { view, event ->
+                                    if (event.action == MotionEvent.ACTION_DOWN) {
+                                        val factory = previewView.meteringPointFactory
+                                        val point = factory.createPoint(event.x, event.y)
+                                        val action = FocusMeteringAction.Builder(point).build()
+                                        camera?.cameraControl?.startFocusAndMetering(action)
+                                        view.performClick()
+                                        return@setOnTouchListener true
+                                    }
+                                    false
+                                }
+                            }
+                        }
+                    )
+                }
+                previewView
             },
             modifier = Modifier.fillMaxSize()
         )
 
-        if (isFlashEnabled || isZoomEnabled) {
-            Column(
+        if (isZoomEnabled) {
+            Slider(
+                value = zoomRatio,
+                onValueChange = {
+                    zoomRatio = it
+                    camera?.cameraControl?.setZoomRatio(it)
+                },
+                valueRange = 1f..5f,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 52.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                if (isZoomEnabled) {
-                    var sliderValue by remember { mutableFloatStateOf(zoomRatioState) }
-
-                    LaunchedEffect(sliderValue) {
-                        snapshotFlow { sliderValue }
-                            .debounce(25)
-                            .collect { zoom ->
-                                camera?.cameraControl?.setZoomRatio(zoom)
-                            }
-                    }
-
-                    Slider(
-                        value = sliderValue,
-                        onValueChange = { sliderValue = it },
-                        valueRange = 1f..maxZoomRatio,
-                        modifier = Modifier
-                            .padding(horizontal = 32.dp)
-                    )
-                }
-
-                if (isFlashEnabled) {
-                    IconButton(
-                        onClick = {
-                            flashEnabled = !flashEnabled
-                            camera?.cameraControl?.enableTorch(flashEnabled)
-                        },
-                        modifier = Modifier
-                            .padding(top = 8.dp)
-                            .size(56.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary)
-                    ) {
-                        Icon(
-                            painter = painterResource(
-                                id = if (flashEnabled) R.drawable.ic_flash_filled else R.drawable.ic_flash_outline
-                            ),
-                            contentDescription = "Flash Toggle",
-                            tint = Color.White
-                        )
-                    }
-                }
-            }
+                    .padding(bottom = 128.dp, start = 64.dp, end = 64.dp)
+            )
         }
 
+        if (isFlashEnabled) {
+            IconButton(
+                onClick = {
+                    flashEnabled = !flashEnabled
+                    camera?.cameraControl?.enableTorch(flashEnabled)
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 52.dp)
+                    .size(56.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary)
+            ) {
+                Icon(
+                    painter = painterResource(id = if (flashEnabled) R.drawable.torchiconon else R.drawable.torchicon),
+                    contentDescription = "Flash Toggle",
+                    tint = Color.White
+                )
+            }
+        }
+    }
+}
+
+fun processImageProxy(image: ImageProxy, scanner: BarcodeReader): String {
+    return image.use {
+        scanner.read(it)
+    }.joinToString("\n") { result ->
+        "${result.text}"
     }
 }
