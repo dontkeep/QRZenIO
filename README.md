@@ -9,11 +9,10 @@ QRZen is a modern Jetpack Compose-based QR and Barcode scanner library for Andro
 * ✅ Jetpack Compose Composable APIs
 * ✨ Bordered scan box UI (with blend mode cutout)
 * 🔦 Flashlight (torch) toggle
-* ↕️ Pinch-to-zoom & slider zoom control
+* ↕️ Slider zoom control
 * 🌍 Tap-to-focus support
 * ✅ Barcode formats powered by ZXing
-* ⚖‟ Scanning toggle support
-* ⛔ Custom permission handler included
+* ⛔ Permission handler included
 
 ---
 
