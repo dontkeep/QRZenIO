@@ -4,31 +4,23 @@ import android.util.Size
 import android.view.MotionEvent
 import android.view.ViewTreeObserver
 import androidx.camera.core.*
+import androidx.camera.core.AspectRatio.RATIO_16_9
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import zxingcpp.BarcodeReader
-import com.al.qrzen.R
 import com.al.qrzen.core.CoreScanner
+import zxingcpp.BarcodeReader
+import com.al.qrzen.ui.TorchToggleButton
+import com.al.qrzen.ui.ZoomSlider
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.debounce
 
 @OptIn(FlowPreview::class)
 @Composable
@@ -67,14 +59,14 @@ fun ZenScannerScreen(
                     }
 
                     val imageAnalysis = ImageAnalysis.Builder()
-                        .setTargetResolution(Size(1280, 720))
+                        .setTargetAspectRatio(RATIO_16_9)
                         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                         .build()
 
                     imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(ctx)) {
                         val now = System.currentTimeMillis()
                         if (isScanningEnabled && now - lastScanTimeMillis > 300) {
-                            val resultText = processImageProxy(it, scanner)
+                            val resultText = CoreScanner().processImageProxy(it, scanner)
                             if (resultText.isNotEmpty()) {
                                 lastScanTimeMillis = now
                                 onQrCodeScanned(resultText)
@@ -122,46 +114,29 @@ fun ZenScannerScreen(
         )
 
         if (isZoomEnabled) {
-            Slider(
-                value = zoomRatio,
-                onValueChange = {
+            ZoomSlider(
+                zoomRatio = zoomRatio,
+                onZoomChanged = {
                     zoomRatio = it
                     camera?.cameraControl?.setZoomRatio(it)
                 },
-                valueRange = 1f..5f,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 128.dp, start = 64.dp, end = 64.dp)
+                    .padding(bottom = 128.dp)
             )
         }
 
         if (isFlashEnabled) {
-            IconButton(
-                onClick = {
-                    flashEnabled = !flashEnabled
-                    camera?.cameraControl?.enableTorch(flashEnabled)
+            TorchToggleButton(
+                isTorchOn = flashEnabled,
+                onToggle = {
+                    flashEnabled = it
+                    camera?.cameraControl?.enableTorch(it)
                 },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 52.dp)
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary)
-            ) {
-                Icon(
-                    painter = painterResource(id = if (flashEnabled) R.drawable.torchiconon else R.drawable.torchicon),
-                    contentDescription = "Flash Toggle",
-                    tint = Color.White
-                )
-            }
+            )
         }
-    }
-}
-
-fun processImageProxy(image: ImageProxy, scanner: BarcodeReader): String {
-    return image.use {
-        scanner.read(it)
-    }.joinToString("\n") { result ->
-        "${result.text}"
     }
 }

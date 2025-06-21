@@ -61,15 +61,6 @@ fun MainScreen() {
                         isScanningEnabled = false
                         isProcessing = false
 
-//                        UsbSerialManager.sendDataToArduino(result) { success, message ->
-//                            transferStatus = if (success) {
-//                                "Data transferred successfully:\n$message"
-//                            } else {
-//                                "Error transferring data:\n$message"
-//                            }
-//                            isScanningEnabled = true
-//                            isProcessing = false
-//                        }
                     }
                 )
             }

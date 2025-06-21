@@ -2,17 +2,13 @@ package com.al.qrzen.scanner
 
 import android.view.MotionEvent
 import androidx.camera.core.*
+import androidx.camera.core.AspectRatio.RATIO_16_9
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,14 +20,13 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import zxingcpp.BarcodeReader
-import com.al.qrzen.R
-import com.al.qrzen.core.CoreScanner
+import com.al.qrzen.core.CoreBorderQRScanner
+import com.al.qrzen.ui.TorchToggleButton
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 
@@ -56,7 +51,7 @@ fun BorderQRScanner(
     val scanningState by rememberUpdatedState(newValue = isScanningEnabled)
 
     val processor = remember {
-        CoreScanner(scanner) { result ->
+        CoreBorderQRScanner(scanner) { result ->
             onQrCodeScanned(result)
         }.apply {
             this.isScanningEnabled = { scanningState }
@@ -97,7 +92,7 @@ fun BorderQRScanner(
                     }
 
                     val imageAnalysis = ImageAnalysis.Builder()
-                        .setTargetResolution(android.util.Size(1280, 720))
+                        .setTargetAspectRatio(RATIO_16_9)
                         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                         .build()
                         .also {
@@ -181,25 +176,15 @@ fun BorderQRScanner(
                 }
 
                 if (isFlashEnabled) {
-                    IconButton(
-                        onClick = {
-                            flashEnabled = !flashEnabled
-                            camera?.cameraControl?.enableTorch(flashEnabled)
+                    TorchToggleButton(
+                        isTorchOn = flashEnabled,
+                        onToggle = {
+                            flashEnabled = it
+                            camera?.cameraControl?.enableTorch(it)
                         },
                         modifier = Modifier
-                            .padding(top = 8.dp)
-                            .size(56.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary)
-                    ) {
-                        Icon(
-                            painter = painterResource(
-                                id = if (flashEnabled) R.drawable.torchiconon else R.drawable.torchicon
-                            ),
-                            contentDescription = "Flash Toggle",
-                            tint = Color.White
-                        )
-                    }
+                            .padding(bottom = 52.dp)
+                    )
                 }
             }
         }
