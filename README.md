@@ -22,9 +22,17 @@ QRZen is available via [JitPack](https://jitpack.io/). Add the following to your
 
 ```kotlin
 // root-level build.gradle
-allprojects {
+pluginManagement {
     repositories {
+        //...other repo
         maven { url 'https://jitpack.io' }
+    }
+}
+
+dependenciesResolutionManagement {
+    repositories {
+        //...other repo
+        maven { url = uri("https://jitpack.io") }
     }
 }
 ```
