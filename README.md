@@ -62,11 +62,18 @@ A simple fullscreen scanner with optional zoom, tap-to-focus, and flash support:
 
 ```kotlin
 ZenScannerScreen(
-    isScanningEnabled = true,
-    onQrCodeScanned = { result -> /* handle result */ },
+    modifier = Modifier.fillMaxSize(),
+    isScanningEnabled = isScanningEnabled,
     isFlashEnabled = true,
     isZoomEnabled = true,
-    isTapToFocusEnabled = true
+    isTapToFocusEnabled = true,
+    onQrCodeScanned = { result ->
+        if (isProcessing) return@ZenScannerScreen
+        isProcessing = true
+        // handle the result
+        isScanningEnabled = false
+        isProcessing = false
+    }
 )
 ```
 
@@ -76,11 +83,18 @@ A more visual scanner with a highlighted border scan area:
 
 ```kotlin
 BorderQRScanner(
-    isScanningEnabled = true,
-    onQrCodeScanned = { result -> /* handle result */ },
+    modifier = Modifier.fillMaxSize(),
+    isScanningEnabled = isScanningEnabled,
     isFlashEnabled = true,
     isZoomEnabled = true,
-    isTapToFocusEnabled = true
+    isTapToFocusEnabled = true,
+    onQrCodeScanned = { result ->
+        if (isProcessing) return@BorderQRScanner
+        isProcessing = true
+        // handle result here
+        isScanningEnabled = false
+        isProcessing = false
+    }
 )
 ```
 
