@@ -1,6 +1,5 @@
 package com.al.qrzen.scanner
 
-import android.util.Size
 import android.view.MotionEvent
 import android.view.ViewTreeObserver
 import androidx.camera.core.*
@@ -28,7 +27,7 @@ fun ZenScannerScreen(
     modifier: Modifier = Modifier,
     isScanningEnabled: Boolean,
     onQrCodeScanned: (String) -> Unit,
-    isFlashEnabled: Boolean,
+    isFlashEnabled: Boolean = false,
     isZoomEnabled: Boolean = false,
     isTapToFocusEnabled: Boolean = false
 ) {
@@ -39,7 +38,6 @@ fun ZenScannerScreen(
     var camera: Camera? by remember { mutableStateOf(null) }
     var zoomRatio by remember { mutableFloatStateOf(1f) }
 
-    // Delay logic: store last scan time
     var lastScanTimeMillis by remember { mutableLongStateOf(0L) }
 
     val previewView = remember { PreviewView(context) }

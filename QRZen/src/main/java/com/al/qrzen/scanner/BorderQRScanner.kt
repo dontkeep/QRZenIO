@@ -36,12 +36,11 @@ fun BorderQRScanner(
     modifier: Modifier = Modifier,
     isScanningEnabled: Boolean,
     onQrCodeScanned: (String) -> Unit,
-    isFlashEnabled: Boolean,
-    isZoomEnabled: Boolean,
-    isTapToFocusEnabled: Boolean
+    isFlashEnabled: Boolean = false,
+    isZoomEnabled: Boolean = false,
+    isTapToFocusEnabled: Boolean = false
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
-    val context = LocalContext.current
     val scanner = remember { BarcodeReader() }
 
     var flashEnabled by remember { mutableStateOf(false) }
