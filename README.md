@@ -22,9 +22,17 @@ QRZen is available via [JitPack](https://jitpack.io/). Add the following to your
 
 ```kotlin
 // root-level build.gradle
-allprojects {
+pluginManagement {
     repositories {
+        //...other repo
         maven { url 'https://jitpack.io' }
+    }
+}
+
+dependenciesResolutionManagement {
+    repositories {
+        //...other repo
+        maven { url = uri("https://jitpack.io") }
     }
 }
 ```
@@ -62,11 +70,18 @@ A simple fullscreen scanner with optional zoom, tap-to-focus, and flash support:
 
 ```kotlin
 ZenScannerScreen(
-    isScanningEnabled = true,
-    onQrCodeScanned = { result -> /* handle result */ },
+    modifier = Modifier.fillMaxSize(),
+    isScanningEnabled = isScanningEnabled,
     isFlashEnabled = true,
     isZoomEnabled = true,
-    isTapToFocusEnabled = true
+    isTapToFocusEnabled = true,
+    onQrCodeScanned = { result ->
+        if (isProcessing) return@ZenScannerScreen
+        isProcessing = true
+        // handle the result
+        isScanningEnabled = false
+        isProcessing = false
+    }
 )
 ```
 
@@ -76,11 +91,18 @@ A more visual scanner with a highlighted border scan area:
 
 ```kotlin
 BorderQRScanner(
-    isScanningEnabled = true,
-    onQrCodeScanned = { result -> /* handle result */ },
+    modifier = Modifier.fillMaxSize(),
+    isScanningEnabled = isScanningEnabled,
     isFlashEnabled = true,
     isZoomEnabled = true,
-    isTapToFocusEnabled = true
+    isTapToFocusEnabled = true,
+    onQrCodeScanned = { result ->
+        if (isProcessing) return@BorderQRScanner
+        isProcessing = true
+        // handle result here
+        isScanningEnabled = false
+        isProcessing = false
+    }
 )
 ```
 
@@ -91,24 +113,6 @@ BorderQRScanner(
 * **CameraX** powers camera preview and control.
 * **ZXing** (Zebra Crossing) handles barcode decoding logic.
 * **ImageAnalysis** from CameraX feeds frames to `CoreScanner`, which reads and parses barcodes efficiently.
-
----
-
-## License
-
-```
-MIT License
-
-Copyright (c) 2025 dontkeep
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so.
-
-```
 
 ---
 
