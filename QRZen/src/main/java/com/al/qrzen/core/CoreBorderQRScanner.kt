@@ -27,6 +27,7 @@ class CoreBorderQRScanner(
     private val scanAreaSizePx = 350.dp.toPx().toInt()
 
     override fun analyze(image: ImageProxy) {
+        Log.d("QRScanner", "Analyzing image: ${image.width}x${image.height}")
         if (!isScanningEnabled()) {
             image.close()
             return
