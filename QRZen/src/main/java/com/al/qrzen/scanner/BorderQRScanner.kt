@@ -2,7 +2,6 @@ package com.al.qrzen.scanner
 
 import android.view.MotionEvent
 import androidx.camera.core.*
-import androidx.camera.core.AspectRatio.RATIO_16_9
 import androidx.camera.core.resolutionselector.AspectRatioStrategy
 import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.core.resolutionselector.ResolutionStrategy
@@ -44,12 +43,13 @@ fun BorderQRScanner(
     isTapToFocusEnabled: Boolean = false
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
+    val context = LocalContext.current
     val scanner = remember { BarcodeReader() }
 
     var flashEnabled by remember { mutableStateOf(false) }
     var camera: Camera? by remember { mutableStateOf(null) }
 
-    var previewView: PreviewView? = null
+    var previewView: PreviewView? by remember { mutableStateOf(null) }
     val scanningState by rememberUpdatedState(newValue = isScanningEnabled)
 
     val processor = remember {
@@ -65,10 +65,10 @@ fun BorderQRScanner(
     var maxZoomRatio by remember { mutableFloatStateOf(4f) }
 
     Box(modifier = modifier.fillMaxSize()) {
-
         AndroidView(
             factory = { ctx ->
-                previewView = PreviewView(ctx).apply {
+                PreviewView(ctx).apply {
+                    previewView = this
                     if (isTapToFocusEnabled) {
                         setOnTouchListener { view, event ->
                             if (event.action == MotionEvent.ACTION_DOWN) {
@@ -82,68 +82,65 @@ fun BorderQRScanner(
                             true
                         }
                     }
-                }
+                }.also { view ->
+                    val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
 
-                val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
+                    cameraProviderFuture.addListener({
+                        val cameraProvider = cameraProviderFuture.get()
 
-                cameraProviderFuture.addListener({
-                    val cameraProvider = cameraProviderFuture.get()
+                        val preview = Preview.Builder()
+                            .setResolutionSelector(
+                                ResolutionSelector.Builder()
+                                    .setAspectRatioStrategy(AspectRatioStrategy.RATIO_16_9_FALLBACK_AUTO_STRATEGY)
+                                    .build()
+                            )
+                            .build()
+                            .also {
+                                it.setSurfaceProvider(view.surfaceProvider)
+                            }
 
-                    val preview = Preview.Builder()
-                        .setResolutionSelector(
-                            ResolutionSelector.Builder()
-                                .setAspectRatioStrategy(AspectRatioStrategy.RATIO_16_9_FALLBACK_AUTO_STRATEGY)
-                                .build()
-                        )
-                        .build()
-                        .also {
-                            it.setSurfaceProvider(previewView!!.surfaceProvider)
-                        }
-
-                    val imageAnalysis = ImageAnalysis.Builder()
-                        .setResolutionSelector(
-                            ResolutionSelector.Builder()
-                                .setAspectRatioStrategy(AspectRatioStrategy.RATIO_16_9_FALLBACK_AUTO_STRATEGY)
-                                .setResolutionStrategy(
-                                    ResolutionStrategy(
-                                        android.util.Size(1280, 720),
-                                        ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER
+                        val imageAnalysis = ImageAnalysis.Builder()
+                            .setResolutionSelector(
+                                ResolutionSelector.Builder()
+                                    .setAspectRatioStrategy(AspectRatioStrategy.RATIO_16_9_FALLBACK_AUTO_STRATEGY)
+                                    .setResolutionStrategy(
+                                        ResolutionStrategy(
+                                            android.util.Size(1280, 720),
+                                            ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER
+                                        )
                                     )
-                                )
-                                .build()
-                        )
-                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                        .build()
-                        .also {
-                            it.setAnalyzer(ContextCompat.getMainExecutor(ctx), processor)
+                                    .build()
+                            )
+                            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                            .build()
+                            .also {
+                                it.setAnalyzer(ContextCompat.getMainExecutor(ctx), processor)
+                            }
+
+                        try {
+                            cameraProvider.unbindAll()
+                            camera = cameraProvider.bindToLifecycle(
+                                lifecycleOwner,
+                                CameraSelector.DEFAULT_BACK_CAMERA,
+                                preview,
+                                imageAnalysis
+                            )
+                            camera?.cameraControl?.enableTorch(flashEnabled)
+
+                            camera?.cameraInfo?.zoomState?.observe(lifecycleOwner) { zoomState ->
+                                maxZoomRatio = zoomState.maxZoomRatio
+                                zoomRatioState = zoomState.zoomRatio
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
                         }
-
-                    try {
-                        cameraProvider.unbindAll()
-                        camera = cameraProvider.bindToLifecycle(
-                            lifecycleOwner,
-                            CameraSelector.DEFAULT_BACK_CAMERA,
-                            preview,
-                            imageAnalysis
-                        )
-                        camera?.cameraControl?.enableTorch(flashEnabled)
-
-                        // Observe max zoom ratio
-                        camera?.cameraInfo?.zoomState?.observe(lifecycleOwner) { zoomState ->
-                            maxZoomRatio = zoomState.maxZoomRatio
-                            zoomRatioState = zoomState.zoomRatio
-                        }
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
-                }, ContextCompat.getMainExecutor(ctx))
-
-                previewView!!
+                    }, ContextCompat.getMainExecutor(ctx))
+                }
             },
             modifier = Modifier.fillMaxSize()
         )
 
-        // Transparent scan box
+        // Strict scan area visualization
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 drawRect(Color.Black.copy(alpha = 0.6f))
@@ -189,8 +186,7 @@ fun BorderQRScanner(
                         value = sliderValue,
                         onValueChange = { sliderValue = it },
                         valueRange = 1f..maxZoomRatio,
-                        modifier = Modifier
-                            .padding(horizontal = 64.dp)
+                        modifier = Modifier.padding(horizontal = 64.dp)
                     )
                 }
 
@@ -201,13 +197,10 @@ fun BorderQRScanner(
                             flashEnabled = it
                             camera?.cameraControl?.enableTorch(it)
                         },
-                        modifier = Modifier
-                            .padding(bottom = 52.dp)
+                        modifier = Modifier.padding(bottom = 52.dp)
                     )
                 }
             }
         }
     }
 }
-
-
