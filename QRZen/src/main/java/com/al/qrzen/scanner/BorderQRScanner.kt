@@ -3,6 +3,9 @@ package com.al.qrzen.scanner
 import android.view.MotionEvent
 import androidx.camera.core.*
 import androidx.camera.core.AspectRatio.RATIO_16_9
+import androidx.camera.core.resolutionselector.AspectRatioStrategy
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Canvas
@@ -87,14 +90,28 @@ fun BorderQRScanner(
                     val cameraProvider = cameraProviderFuture.get()
 
                     val preview = Preview.Builder()
-                        .setTargetAspectRatio(RATIO_16_9)
+                        .setResolutionSelector(
+                            ResolutionSelector.Builder()
+                                .setAspectRatioStrategy(AspectRatioStrategy.RATIO_16_9_FALLBACK_AUTO_STRATEGY)
+                                .build()
+                        )
                         .build()
                         .also {
-                        it.setSurfaceProvider(previewView!!.surfaceProvider)
-                    }
+                            it.setSurfaceProvider(previewView!!.surfaceProvider)
+                        }
 
                     val imageAnalysis = ImageAnalysis.Builder()
-                        .setTargetResolution(android.util.Size(1280, 720))
+                        .setResolutionSelector(
+                            ResolutionSelector.Builder()
+                                .setAspectRatioStrategy(AspectRatioStrategy.RATIO_16_9_FALLBACK_AUTO_STRATEGY)
+                                .setResolutionStrategy(
+                                    ResolutionStrategy(
+                                        android.util.Size(1280, 720),
+                                        ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER
+                                    )
+                                )
+                                .build()
+                        )
                         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                         .build()
                         .also {
