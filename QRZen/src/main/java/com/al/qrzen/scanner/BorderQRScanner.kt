@@ -86,12 +86,15 @@ fun BorderQRScanner(
                 cameraProviderFuture.addListener({
                     val cameraProvider = cameraProviderFuture.get()
 
-                    val preview = Preview.Builder().build().also {
+                    val preview = Preview.Builder()
+                        .setTargetAspectRatio(RATIO_16_9)
+                        .build()
+                        .also {
                         it.setSurfaceProvider(previewView!!.surfaceProvider)
                     }
 
                     val imageAnalysis = ImageAnalysis.Builder()
-                        .setTargetAspectRatio(RATIO_16_9)
+                        .setTargetResolution(android.util.Size(1280, 720))
                         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                         .build()
                         .also {
